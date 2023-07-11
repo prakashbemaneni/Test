@@ -60,3 +60,53 @@ public class RedisCacheUtil \{\
 \
 \}\
 }
+
+
+
+
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import reactor.core.publisher.Mono;
+
+public class MyService {
+
+    public Mono<String> processRequest() {
+        return ReactiveSecurityContextHolder.getContext()
+                .flatMap(securityContext -> {
+                    Authentication authentication = securityContext.getAuthentication();
+                    setAuthenticationDetails(authentication);
+
+                    // Perform operations with the security context data and additional details
+                    String result = "Processed request";
+
+                    // Return the result
+                    return Mono.just(result);
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    SecurityContext securityContext = SecurityContextHolder.getContext();
+                    Authentication authentication = securityContext.getAuthentication();
+                    setAuthenticationDetails(authentication);
+
+                    try {
+                        // Perform operations with the security context data and additional details
+                        String result = "Processed request";
+
+                        // Return the result
+                        return Mono.just(result);
+                    } finally {
+                        SecurityContextHolder.clearContext();
+                    }
+                }))
+                .flatMapMany(resultMono -> resultMono); // Use flatMapMany instead of flatMap
+    }
+
+    private void setAuthenticationDetails(Authentication authentication) {
+        if (authentication instanceof AbstractAuthenticationToken) {
+            AbstractAuthenticationToken authToken = (AbstractAuthenticationToken) authentication;
+            authToken.setDetails("Additional details"); // Set your desired details here
+        }
+    }
+}
